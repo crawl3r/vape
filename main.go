@@ -28,6 +28,7 @@ var sucuriIPRanges = "185.93.228.0/24 185.93.229.0/24 185.93.230.0/24 185.93.231
 
 var outputToSave = []string{}
 var out io.Writer = os.Stdout
+var quietMode bool
 
 func main() {
 	var outputFileFlag string
@@ -35,7 +36,7 @@ func main() {
 	quietModeFlag := flag.Bool("q", false, "Only output the data we care about")
 	flag.Parse()
 
-	quietMode := *quietModeFlag
+	quietMode = *quietModeFlag
 	saveOutput := outputFileFlag != ""
 
 	if !quietMode {
@@ -74,11 +75,12 @@ func main() {
 	sucuriIPRanges := strings.Split(sucuriIPRanges, " ")
 
 	for u := range targetDomains {
-		fmt.Println("Test:", u)
 		wg.Add(1)
 		go func(url string) {
 			defer wg.Done()
-			fmt.Println("Checking:", url)
+			if !quietMode {
+				fmt.Println("Checking:", url)
+			}
 			identifiedIPs := getIPForDomain(url)
 			if len(identifiedIPs) > 0 {
 				for _, i := range identifiedIPs {
@@ -136,13 +138,17 @@ func getIPForDomain(url string) []string {
 
 func checkIPInRange(rangeCollection []string, target string, url string, rangeProvider string) {
 	targetIP := net.ParseIP(target)
+	fmt.Println("Checking IP:", targetIP, "in range for", rangeProvider)
 
 	for _, r := range rangeCollection {
 		_, rangeIPNet, _ := net.ParseCIDR(r)
 		// is the target IP in the first range?
 		if rangeIPNet.Contains(targetIP) {
-			fmt.Println("Exists in range!")
+			if !quietMode {
+				fmt.Println("Exists in range!")
+			}
 			newLine := url + "|" + target + "|" + rangeProvider
+			fmt.Println(newLine)
 			outputToSave = append(outputToSave, newLine)
 			break
 		}
