@@ -1,4 +1,4 @@
-#Vape  
+# Vape  
   
 One for the edgelords who blow clouds all day.  
 Pass in a list of subdomains/domains/IPs/whatever and check whether they are part of a cloud providers range. The output will give us the URL, IP and the provider itself split by pipes. Should be easy enough to awk/sed your way to victory. If not, I'll add some more options.  
