@@ -118,9 +118,9 @@ func main() {
 
 func banner() {
 	fmt.Println("---------------------------------------------------")
-	fmt.Println("LeakyTap -> Crawl3r")
-	fmt.Println("List URL's which appear to be leaking source instead of having the server interpret it")
-	fmt.Printf("Currently looks for:\n\tphp\n\n")
+	fmt.Println("Vape -> Crawl3r")
+	fmt.Println("Checks to see if a URL is hosted behind a cloud provider. Reads directly from stdin.")
+	fmt.Println("")
 	fmt.Println("Run again with -q for cleaner output")
 	fmt.Println("---------------------------------------------------")
 }
@@ -138,14 +138,16 @@ func getIPForDomain(url string) []string {
 
 func checkIPInRange(rangeCollection []string, target string, url string, rangeProvider string) {
 	targetIP := net.ParseIP(target)
-	fmt.Println("Checking IP:", targetIP, "in range for", rangeProvider)
+	if !quietMode {
+		fmt.Println("Checking IP:", targetIP, "in range for", rangeProvider)
+	}
 
 	for _, r := range rangeCollection {
 		_, rangeIPNet, _ := net.ParseCIDR(r)
 		// is the target IP in the first range?
 		if rangeIPNet.Contains(targetIP) {
 			if !quietMode {
-				fmt.Println("Exists in range!")
+				fmt.Printf("[+] %s exists in %s\n", target, rangeProvider)
 			}
 			newLine := url + "|" + target + "|" + rangeProvider
 			fmt.Println(newLine)
