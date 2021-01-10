@@ -24,12 +24,12 @@ cat urls.txt | ./vape
   
 Run and save the output to file  
 ```
-cat urls.txt | ./leakytap -o output.txt
+cat urls.txt | ./vape -o output.txt
 ```  
   
 Run in quiet mode, only prints the identified cloud based IP addresses. 
 ```
-cat urls.txt | ./leakytap -q
+cat urls.txt | ./vape -q
 ```
   
 ## License  
