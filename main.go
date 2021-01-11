@@ -29,14 +29,17 @@ var sucuriIPRanges = "185.93.228.0/24 185.93.229.0/24 185.93.230.0/24 185.93.231
 var outputToSave = []string{}
 var out io.Writer = os.Stdout
 var quietMode bool
+var ipMode bool
 
 func main() {
 	var outputFileFlag string
 	flag.StringVar(&outputFileFlag, "o", "", "Output a list of the identified IP addresses with their URL and the provider (if identified)")
 	quietModeFlag := flag.Bool("q", false, "Only output the data we care about")
+	ipModeFlag := flag.Bool("i", false, "Input is already a list of IP addresses")
 	flag.Parse()
 
 	quietMode = *quietModeFlag
+	ipMode = *ipModeFlag
 	saveOutput := outputFileFlag != ""
 
 	if !quietMode {
@@ -81,13 +84,36 @@ func main() {
 			if !quietMode {
 				fmt.Println("Checking:", url)
 			}
-			identifiedIPs := getIPForDomain(url)
+
+			identifiedIPs := []string{}
+			if ipMode {
+				identifiedIPs = append(identifiedIPs, url)
+			} else {
+				identifiedIPs = getIPForDomain(url)
+			}
+
 			if len(identifiedIPs) > 0 {
 				for _, i := range identifiedIPs {
-					checkIPInRange(akamaiRanges, i, url, "akamai")
-					checkIPInRange(cloudflareRanges, i, url, "cloudflare")
-					checkIPInRange(incapsulaRanges, i, url, "incapsula")
-					checkIPInRange(sucuriIPRanges, i, url, "sucuri")
+					wasFoundInCloud := false
+					wasFoundInCloud = checkIPInRange(akamaiRanges, i, url, "akamai")
+
+					if !wasFoundInCloud {
+						wasFoundInCloud = checkIPInRange(cloudflareRanges, i, url, "cloudflare")
+					}
+
+					if !wasFoundInCloud {
+						wasFoundInCloud = checkIPInRange(incapsulaRanges, i, url, "incapsula")
+					}
+
+					if !wasFoundInCloud {
+						wasFoundInCloud = checkIPInRange(sucuriIPRanges, i, url, "sucuri")
+					}
+
+					if !wasFoundInCloud {
+						newLine := url + "|" + i + "|n/a"
+						fmt.Println(newLine)
+						outputToSave = append(outputToSave, newLine)
+					}
 				}
 			}
 		}(u)
@@ -136,12 +162,13 @@ func getIPForDomain(url string) []string {
 	return identifiedIPAddresses
 }
 
-func checkIPInRange(rangeCollection []string, target string, url string, rangeProvider string) {
+func checkIPInRange(rangeCollection []string, target string, url string, rangeProvider string) bool {
 	targetIP := net.ParseIP(target)
 	if !quietMode {
 		fmt.Println("Checking IP:", targetIP, "in range for", rangeProvider)
 	}
 
+	wasFoundInCloud := false
 	for _, r := range rangeCollection {
 		_, rangeIPNet, _ := net.ParseCIDR(r)
 		// is the target IP in the first range?
@@ -149,12 +176,17 @@ func checkIPInRange(rangeCollection []string, target string, url string, rangePr
 			if !quietMode {
 				fmt.Printf("[+] %s exists in %s\n", target, rangeProvider)
 			}
+
 			newLine := url + "|" + target + "|" + rangeProvider
 			fmt.Println(newLine)
 			outputToSave = append(outputToSave, newLine)
+
+			wasFoundInCloud = true
 			break
 		}
 	}
+
+	return wasFoundInCloud
 }
 
 func readStdin() <-chan string {
@@ -165,7 +197,11 @@ func readStdin() <-chan string {
 		for sc.Scan() {
 			url := strings.ToLower(sc.Text())
 			if url != "" {
-				lines <- url
+				// strip the http:// or https:// here other the IP look up fails
+				// Note: we don't care for multiple entries of the same URL
+				final := strings.Replace(url, "http://", "", -1)
+				final = strings.Replace(final, "https://", "", -1)
+				lines <- final
 			}
 		}
 	}()
